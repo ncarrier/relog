@@ -1,0 +1,5 @@
+.autotools
+.cproject
+.project
+librelog.so
+relog
