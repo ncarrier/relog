@@ -99,6 +99,8 @@ int main(int argc, char *argv[])
 	const char *errfile = NULL;
 #endif /* RELOG_FORCE_DEFAULT_ERROR_TO */
 
+	if (argc == 1)
+		usage(EXIT_FAILURE);
 	if (strcmp(argv[1], "-h") == 0)
 		usage(EXIT_SUCCESS);
 
