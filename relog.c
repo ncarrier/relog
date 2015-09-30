@@ -1,5 +1,5 @@
 /*
- * main.c
+ * relog.c
  *
  *  Created on: Sep 25, 2015
  *      Author: ncarrier

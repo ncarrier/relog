@@ -1,6 +1,6 @@
 all:relog librelog.so
 
-relog:main.c
+relog:relog.c
 	gcc $^ -o $@ -g3 -O0 \
 		-Wall -Wextra -Werror \
 		-DRELOG_LIBRELOG_PATH=\"$(shell pwd)/librelog.so\" \
