@@ -16,15 +16,11 @@
 #include <stdio.h>
 #include <getopt.h>
 
+#include "relog.h"
+
 #ifndef RELOG_LIBRELOG_PATH
 #define RELOG_LIBRELOG_PATH "/usr/lib/librelog.so"
 #endif /* RELOG_LIBRELOG_PATH */
-
-#define RELOG_OUTFILE_ENV "RELOG_OUTFILE"
-#define RELOG_ERRFILE_ENV "RELOG_ERRFILE"
-#define RELOG_OUTPROCESS_ENV "RELOG_OUTPROCESS"
-#define RELOG_ERRPROCESS_ENV "RELOG_ERRPROCESS"
-#define RELOG_SAME_ERRPROCESS_ENV "RELOG_SAME_ERRPROCESS"
 
 static const struct option long_options[] = {
 		{

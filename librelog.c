@@ -15,12 +15,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define LIBRELOG_OUTFILE_ENVIRONMENT "RELOG_OUTFILE"
-#define LIBRELOG_ERRFILE_ENVIRONMENT "RELOG_ERRFILE"
-
-#define LIBRELOG_OUTPROCESS_ENVIRONMENT "RELOG_OUTPROCESS"
-#define LIBRELOG_ERRPROCESS_ENVIRONMENT "RELOG_ERRPROCESS"
-#define LIBRELOG_SAME_ERRPROCESS_ENVIRONMENT "RELOG_SAME_ERRPROCESS"
+#include "relog.h"
 
 struct relog_process {
 	const char *cmd;
@@ -30,6 +25,7 @@ struct relog_process {
 };
 
 // TODO replace popen by fork exec to gain one process
+// TODO use only one global
 
 static struct relog_process out_process = {
 		.old_fd_value = STDOUT_FILENO,
@@ -127,16 +123,17 @@ static __attribute__((constructor)) void relog_init(void)
 	int ret;
 	const char *old_ld_preload;
 
-	relog_file_init(getenv(LIBRELOG_OUTFILE_ENVIRONMENT), STDOUT_FILENO);
-	relog_file_init(getenv(LIBRELOG_ERRFILE_ENVIRONMENT), STDERR_FILENO);
+	relog_file_init(getenv(RELOG_OUTFILE_ENV), STDOUT_FILENO);
+	relog_file_init(getenv(RELOG_ERRFILE_ENV), STDERR_FILENO);
 
 	/* avoid creating a fork bomb, hahem... */
+	// TODO properly remove relog from LD_PRELOAD, don't reinstall it
 	old_ld_preload = getenv("LD_PRELOAD");
 	if (old_ld_preload != NULL)
 		unsetenv("LD_PRELOAD");
 
-	same_errprocess = getenv(LIBRELOG_SAME_ERRPROCESS_ENVIRONMENT) != NULL;
-	out_process.cmd = getenv(LIBRELOG_OUTPROCESS_ENVIRONMENT);
+	same_errprocess = getenv(RELOG_SAME_ERRPROCESS_ENV) != NULL;
+	out_process.cmd = getenv(RELOG_OUTPROCESS_ENV);
 	if (out_process.cmd != NULL) {
 		relog_process_init(&out_process);
 		if (same_errprocess) {
@@ -152,7 +149,7 @@ static __attribute__((constructor)) void relog_init(void)
 			}
 		}
 	}
-	err_process.cmd = getenv(LIBRELOG_ERRPROCESS_ENVIRONMENT);
+	err_process.cmd = getenv(RELOG_ERRPROCESS_ENV);
 	if (err_process.cmd != NULL && !same_errprocess)
 		relog_process_init(&err_process);
 
