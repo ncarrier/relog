@@ -18,10 +18,6 @@
 
 #include "relog.h"
 
-#ifndef RELOG_LIBRELOG_PATH
-#define RELOG_LIBRELOG_PATH "/usr/lib/librelog.so"
-#endif /* RELOG_LIBRELOG_PATH */
-
 static const struct option long_options[] = {
 		{
 				.name = "errfile",
