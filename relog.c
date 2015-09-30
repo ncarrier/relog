@@ -138,7 +138,7 @@ static int prepend_librelog_path_to_ld_preload(void)
 		return -1;
 	}
 
-	return setenv("LD_PRELOAD", str, 1);
+	return setenv("LD_PRELOAD", str, true);
 }
 
 int main(int argc, char *argv[])
@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (getenv("LD_PRELOAD") == NULL)
-		ret = setenv("LD_PRELOAD", RELOG_LIBRELOG_PATH, 1);
+		ret = setenv("LD_PRELOAD", RELOG_LIBRELOG_PATH, true);
 	else
 		ret = prepend_librelog_path_to_ld_preload();
 	if (ret == -1) {
