@@ -43,6 +43,9 @@ static int relog_file_init(const char *file, int fd)
 	int newfd;
 	int ret = -1;
 
+	if (file == NULL || fd < 0)
+		return -1;
+
 	newfd = open(file, O_WRONLY);
 	if (newfd == -1) {
 		fprintf(stderr, "%d open: %m\n", __LINE__);
@@ -115,13 +118,9 @@ err:
 static __attribute__((constructor)) void relog_init(void)
 {
 	const char *old_ld_preload;
-	const char *outfile = getenv(LIBRELOG_OUTFILE_ENVIRONMENT);
-	const char *errfile = getenv(LIBRELOG_ERRFILE_ENVIRONMENT);
 
-	if (outfile != NULL)
-		relog_file_init(outfile, STDOUT_FILENO);
-	if (errfile != NULL)
-		relog_file_init(errfile, STDERR_FILENO);
+	relog_file_init(getenv(LIBRELOG_OUTFILE_ENVIRONMENT), STDOUT_FILENO);
+	relog_file_init(getenv(LIBRELOG_ERRFILE_ENVIRONMENT), STDERR_FILENO);
 
 	/* avoid creating a fork bomb, hahem... */
 	old_ld_preload = getenv("LD_PRELOAD");
