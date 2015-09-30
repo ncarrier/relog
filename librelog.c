@@ -112,7 +112,7 @@ err:
 	return ret;
 }
 
-__attribute__((constructor)) void init_relog(void)
+static __attribute__((constructor)) void relog_init(void)
 {
 	const char *old_ld_preload;
 	const char *outfile = getenv(LIBRELOG_OUTFILE_ENVIRONMENT);
