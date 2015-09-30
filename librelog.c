@@ -118,19 +118,54 @@ err:
 	return ret;
 }
 
+#define ARRAY_SIZE(a) (sizeof((a)) / sizeof((a)[0]))
+
+static void str_free(char **str)
+{
+	if (str == NULL || *str == NULL)
+		return;
+
+	free(*str);
+	*str = NULL;
+}
+
+static void remove_librelog_from_ld_preload(void)
+{
+	const char *ld_preload = getenv("LD_PRELOAD");
+	char __attribute__((cleanup(str_free))) *new_ld_preload = NULL;
+	char *pos;
+	char *moved_string;
+	size_t n;
+
+	new_ld_preload = strdup(ld_preload);
+	if (new_ld_preload == NULL) {
+		new_ld_preload = NULL;
+		fprintf(stderr, "%d strdup: %m\n", __LINE__);
+		unsetenv("LD_PRELOAD");
+	}
+
+	pos = strstr(new_ld_preload, RELOG_LIBRELOG_PATH);
+	if (pos == NULL)
+		/*
+		 * it seems that we aren't here thanks to LD_PRELOAD, there's
+		 * not much we can do...
+		 */
+		return;
+
+	moved_string = pos + ARRAY_SIZE(RELOG_LIBRELOG_PATH) - 1;
+	n = strlen(moved_string) + 1;
+	memmove(pos, pos + ARRAY_SIZE(RELOG_LIBRELOG_PATH), n);
+	setenv("LD_PRELOAD", new_ld_preload, true);
+}
+
 static __attribute__((constructor)) void relog_init(void)
 {
 	int ret;
-	const char *old_ld_preload;
+
+	remove_librelog_from_ld_preload();
 
 	relog_file_init(getenv(RELOG_OUTFILE_ENV), STDOUT_FILENO);
 	relog_file_init(getenv(RELOG_ERRFILE_ENV), STDERR_FILENO);
-
-	/* avoid creating a fork bomb, hahem... */
-	// TODO properly remove relog from LD_PRELOAD, don't reinstall it
-	old_ld_preload = getenv("LD_PRELOAD");
-	if (old_ld_preload != NULL)
-		unsetenv("LD_PRELOAD");
 
 	same_errprocess = getenv(RELOG_SAME_ERRPROCESS_ENV) != NULL;
 	out_process.cmd = getenv(RELOG_OUTPROCESS_ENV);
@@ -155,14 +190,11 @@ static __attribute__((constructor)) void relog_init(void)
 
 	setlinebuf(stderr);
 	setlinebuf(stdout);
-
-	if (old_ld_preload != NULL)
-		setenv("LD_PRELOAD", old_ld_preload, 1);
 }
 
 static __attribute__((destructor)) void relog_clean(void)
 {
-	/* restores stderr plus closes the snd ref on the process' pipe */
+	/* restores stderr plus closes the 2nd ref on the process' pipe */
 	if (same_errprocess && out_process.cmd != NULL)
 		dup2(stderr_fd_backup, STDERR_FILENO);
 
