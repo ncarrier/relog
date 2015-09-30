@@ -13,12 +13,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define LIBRELOG_OUTFILE_ENVIRONMENT "RELOG_OUTFILE"
 #define LIBRELOG_ERRFILE_ENVIRONMENT "RELOG_ERRFILE"
 
 #define LIBRELOG_OUTPROCESS_ENVIRONMENT "RELOG_OUTPROCESS"
 #define LIBRELOG_ERRPROCESS_ENVIRONMENT "RELOG_ERRPROCESS"
+#define LIBRELOG_SAME_ERRPROCESS_ENVIRONMENT "RELOG_SAME_ERRPROCESS"
 
 struct relog_process {
 	const char *cmd;
@@ -26,6 +28,8 @@ struct relog_process {
 	int old_fd_value;
 	int old_fd_backup;
 };
+
+// TODO replace popen by fork exec to gain one process
 
 static struct relog_process out_process = {
 		.old_fd_value = STDOUT_FILENO,
@@ -35,6 +39,9 @@ static struct relog_process err_process = {
 		.old_fd_value = STDERR_FILENO,
 		.old_fd_backup = -1,
 };
+
+static bool same_errprocess;
+static int stderr_fd_backup = -1;
 
 /* file: file to redirect to, fd: stream redirected */
 /* no _cleanup, the normal C standard streams cleanup will take place */
@@ -117,6 +124,7 @@ err:
 
 static __attribute__((constructor)) void relog_init(void)
 {
+	int ret;
 	const char *old_ld_preload;
 
 	relog_file_init(getenv(LIBRELOG_OUTFILE_ENVIRONMENT), STDOUT_FILENO);
@@ -127,11 +135,25 @@ static __attribute__((constructor)) void relog_init(void)
 	if (old_ld_preload != NULL)
 		unsetenv("LD_PRELOAD");
 
+	same_errprocess = getenv(LIBRELOG_SAME_ERRPROCESS_ENVIRONMENT) != NULL;
 	out_process.cmd = getenv(LIBRELOG_OUTPROCESS_ENVIRONMENT);
-	if (out_process.cmd != NULL)
+	if (out_process.cmd != NULL) {
 		relog_process_init(&out_process);
+		if (same_errprocess) {
+			stderr_fd_backup = dup(STDERR_FILENO);
+			if (stderr_fd_backup == -1) {
+				fprintf(stderr, "%d dup: %m\n", __LINE__);
+			} else {
+				ret = dup2(fileno(out_process.pipe),
+						STDERR_FILENO);
+				if (ret < 0)
+					fprintf(stderr, "%d dup2: %m\n",
+							__LINE__);
+			}
+		}
+	}
 	err_process.cmd = getenv(LIBRELOG_ERRPROCESS_ENVIRONMENT);
-	if (err_process.cmd != NULL)
+	if (err_process.cmd != NULL && !same_errprocess)
 		relog_process_init(&err_process);
 
 	setlinebuf(stderr);
@@ -143,6 +165,10 @@ static __attribute__((constructor)) void relog_init(void)
 
 static __attribute__((destructor)) void relog_clean(void)
 {
+	/* restores stderr plus closes the snd ref on the process' pipe */
+	if (same_errprocess && out_process.cmd != NULL)
+		dup2(stderr_fd_backup, STDERR_FILENO);
+
 	relog_process_clean(&out_process);
 	relog_process_clean(&err_process);
 }
