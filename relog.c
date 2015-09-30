@@ -14,49 +14,113 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-
-#ifndef RELOG_DEFAULT_OUT_FILE
-#define RELOG_DEFAULT_OUT_FILE "/dev/kmsg"
-#endif /* RELOG_DEFAULT_OUT_FILE */
+#include <getopt.h>
 
 #ifndef RELOG_LIBRELOG_PATH
 #define RELOG_LIBRELOG_PATH "/usr/lib/librelog.so"
 #endif /* RELOG_LIBRELOG_PATH */
 
-#define RELOG_OUTFILE_OPT "--outfile="
-#define RELOG_ERRFILE_OPT "--errfile="
-
 #define RELOG_OUTFILE_ENV "RELOG_OUTFILE"
 #define RELOG_ERRFILE_ENV "RELOG_ERRFILE"
+#define RELOG_OUTPROCESS_ENV "RELOG_OUTPROCESS"
+#define RELOG_ERRPROCESS_ENV "RELOG_ERRPROCESS"
+#define RELOG_SAME_ERRPROCESS_ENV "RELOG_SAME_ERRPROCESS"
 
-static bool str_starts_with(const char *string, const char *prefix)
-{
-	return strncmp(string, prefix, strlen(prefix)) == 0;
-}
+static const struct option long_options[] = {
+		{
+				.name = "errfile",
+				.has_arg = required_argument,
+				.flag = NULL,
+				.val = 'e',
+		},
+		{
+				.name = "help",
+				.has_arg = no_argument,
+				.flag = NULL,
+				.val = 'h',
+		},
+		{
+				.name = "outfile",
+				.has_arg = required_argument,
+				.flag = NULL,
+				.val = 'o',
+		},
+		{
+				.name = "same-errprocess",
+				.has_arg = no_argument,
+				.flag = NULL,
+				.val = 's',
+		},
+		{
+				.name = "errprocess",
+				.has_arg = required_argument,
+				.flag = NULL,
+				.val = 'E',
+		},
+		{
+				.name = "outprocess",
+				.has_arg = required_argument,
+				.flag = NULL,
+				.val = 'O',
+		},
+		{0},
+};
 
-static const char *str_strip_prefix(const char *string, const char *prefix)
-{
-	return string + strlen(prefix);
-}
+static const char short_options[] = "e:ho:sE:O:";
+
+static const char *help[] = {
+		['e'] = "FILE\n\t\t"
+				"file which the program's standard error will "
+				"be redirected to"
+#ifdef RELOG_FORCE_DEFAULT_ERROR_TO
+				", defaults to "RELOG_FORCE_DEFAULT_ERROR_TO
+#endif
+				,
+		['o'] = "FILE\n\t\t"
+				"file which the program's standard output will "
+				"be redirected to"
+#ifdef RELOG_FORCE_DEFAULT_OUTPUT_TO
+				", defaults to "RELOG_FORCE_DEFAULT_OUTPUT_TO
+#endif
+				,
+		['h'] = "\n\t\t"
+				"this help",
+		['s'] = "\n\t\t"
+				"if the --outprocess is given, the standard "
+				"error will be redirected to the same process' "
+				"standard input, thus saving one process "
+				"creation, otherwise, this option is ignored",
+		['E'] = "CMDLINE\n\t\t"
+				"filter which will be executed and fed with the"
+				" program's standard error",
+		['O'] = "CMDLINE\n\t\t"
+				"filter which will be executed and fed with the"
+				" program's standard output",
+};
 
 __attribute__((noreturn))
 static void usage(int status)
 {
-	printf("usage : relog [--outfile=output_file] [--errfile=error_file] "
-			"relog PROGRAM WITH ITS ARGUMENTS\n"
-			"\tstarts PROGRAM with the arguments list "
-			"\"WITH ITS ARGUMENTS\" and redirects it's standard "
-			"output to output_file if given and it's standard error"
-			" to error_file, if given. Both streams are configured "
-			"with line mode buffering.\n");
-#ifdef RELOG_FORCE_DEFAULT_OUTPUT_TO
-	printf("\tIf no output_file is given, "RELOG_FORCE_DEFAULT_OUTPUT_TO
-			" will be used for standard output redirection.\n");
-#endif
-#ifdef RELOG_FORCE_DEFAULT_ERROR_TO
-	printf("\tIf no error_file is given, "RELOG_FORCE_DEFAULT_ERROR_TO
-			" will be used for standard output redirection.\n");
-#endif
+	int i = 0;
+	const char *h;
+	const char *name;
+
+	printf("usage : relog [options] PROGRAM WITH ITS ARGUMENTS\n\n"
+			"\tStarts PROGRAM with the arguments list "
+			"\"WITH ITS ARGUMENTS\". "
+			"Both standard output and error streams are configured "
+			"with line mode buffering. "
+			"The options allow to redirect output and error to "
+			"another log facility. "
+			"If one option occur more than once, the latest "
+			"occurrence takes precedence.\n\n");
+
+	do {
+		name = long_options[i].name;
+		h = help[long_options[i].val];
+		if (h != NULL)
+			printf("\t--%s %s\n", name, h);
+	} while (long_options[++i].name != NULL);
 
 	exit(status);
 }
@@ -87,45 +151,49 @@ static int prepend_librelog_path_to_ld_preload(void)
 
 int main(int argc, char *argv[])
 {
+	int c;
 	int ret;
-#ifdef RELOG_FORCE_DEFAULT_OUTPUT_TO
-	const char *outfile = RELOG_FORCE_DEFAULT_OUTPUT_TO;
-#else
-	const char *outfile = NULL;
-#endif /* RELOG_FORCE_DEFAULT_OUTPUT_TO */
+
 #ifdef RELOG_FORCE_DEFAULT_ERROR_TO
-	const char *errfile = RELOG_FORCE_DEFAULT_ERROR_TO;
-#else
-	const char *errfile = NULL;
+	setenv(RELOG_ERRFILE_ENV, RELOG_FORCE_DEFAULT_ERROR_TO, 1);
 #endif /* RELOG_FORCE_DEFAULT_ERROR_TO */
+#ifdef RELOG_FORCE_DEFAULT_OUTPUT_TO
+	setenv(RELOG_OUTFILE_ENV, RELOG_FORCE_DEFAULT_OUTPUT_TO, 1);
+#endif /* RELOG_FORCE_DEFAULT_OUTPUT_TO */
 
-	if (argc == 1)
-		usage(EXIT_FAILURE);
-	if (strcmp(argv[1], "-h") == 0)
-		usage(EXIT_SUCCESS);
+	while (true) {
+		c = getopt_long(argc, argv, short_options, long_options, NULL);
+		if (c == -1)
+			break;
 
-parse_options:
-	if (argc >= 2) {
-		if (str_starts_with(argv[1], RELOG_OUTFILE_OPT)) {
-			outfile = str_strip_prefix(argv[1], RELOG_OUTFILE_OPT);
-			argc--;
-			argv++;
-			goto parse_options;
-		}
-		if (str_starts_with(argv[1], RELOG_ERRFILE_OPT)) {
-			errfile = str_strip_prefix(argv[1], RELOG_ERRFILE_OPT);
-			argc--;
-			argv++;
-			goto parse_options;
+		switch (c) {
+		case 'e':
+			setenv(RELOG_ERRFILE_ENV, optarg, true);
+			break;
+
+		case 'h':
+			usage(EXIT_SUCCESS);
+
+		case 'o':
+			setenv(RELOG_OUTFILE_ENV, optarg, true);
+			break;
+
+		case 's':
+			setenv(RELOG_SAME_ERRPROCESS_ENV, optarg, true);
+			break;
+
+		case 'E':
+			setenv(RELOG_ERRPROCESS_ENV, optarg, true);
+			break;
+
+		case 'O':
+			setenv(RELOG_OUTPROCESS_ENV, optarg, true);
+			break;
+
+		default:
+			usage(EXIT_FAILURE);
 		}
 	}
-	if (argc < 2)
-		usage(EXIT_FAILURE);
-
-	if (outfile != NULL)
-		setenv(RELOG_OUTFILE_ENV, outfile, 1);
-	if (errfile != NULL)
-		setenv(RELOG_ERRFILE_ENV, errfile, 1);
 
 	if (getenv("LD_PRELOAD") == NULL)
 		ret = setenv("LD_PRELOAD", RELOG_LIBRELOG_PATH, 1);
@@ -136,11 +204,14 @@ parse_options:
 		return EXIT_FAILURE;
 	}
 
-	argc--;
-	argv++;
+	argc -= optind;
+	argv += optind;
+	if (argc < 1)
+		usage(EXIT_FAILURE);
+
 	ret = execvp(*argv, argv);
 	if (ret == -1) {
-		fprintf(stderr, "setting LD_PRELOAD: %s\n", strerror(-ret));
+		perror("execvp");
 		return EXIT_FAILURE;
 	}
 
