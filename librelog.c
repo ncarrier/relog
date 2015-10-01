@@ -52,17 +52,16 @@ static int relog_file_init(const char *file, int fd)
 	newfd = open(file, O_WRONLY);
 	if (newfd == -1) {
 		fprintf(stderr, "%d open: %m\n", __LINE__);
-		goto err;
+		goto out;
 	}
 
 	ret = dup2(newfd, fd);
 	if (ret == -1) {
 		fprintf(stderr, "%d dup2: %m\n", __LINE__);
-		goto err;
+		goto out;
 	}
 
-	return 0;
-err:
+out:
 	if (newfd != -1)
 		close(newfd);
 
