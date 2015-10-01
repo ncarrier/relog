@@ -111,7 +111,7 @@ static void usage(int status)
 		name = long_options[i].name;
 		h = help[long_options[i].val];
 		if (h != NULL)
-			printf("\t--%s %s\n", name, h);
+			printf("\t-%c, --%s %s\n", long_options[i].val, name, h);
 	} while (long_options[++i].name != NULL);
 
 	exit(status);
