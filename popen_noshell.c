@@ -95,11 +95,10 @@ static void launch_command(const struct popen_noshell_ctx *ctx,
 	if (ret == -1)
 		_exit(EXIT_FAILURE);
 
-	execvp(we->we_wordv[0], we->we_wordv);
-	/*
-	 * TODO user "standard" shell return values if process couldn't be
-	 * executed
-	 */
+	ret = execvp(we->we_wordv[0], we->we_wordv);
+	if (ret == -1)
+		if (errno == ENOENT)
+			_exit(127);
 
 	_exit(EXIT_FAILURE);
 }
