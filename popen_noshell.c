@@ -37,7 +37,8 @@ struct popen_noshell_ctx {
 	int pipefd[2];
 };
 
-static int popen_noshell_configure_ctx(struct popen_noshell_ctx *ctx, const char *type)
+static int popen_noshell_configure_ctx(struct popen_noshell_ctx *ctx,
+		const char *type)
 {
 	char c0;
 	char c1;
