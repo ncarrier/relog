@@ -173,6 +173,7 @@ FILE *popen_noshell(const char *command, const char *type)
 		goto err;
 	if (pid == 0) /* in child */
 		launch_command(&ctx, &we);
+	wordfree(&we);
 
 	close(ctx.in ? ctx.pipefd[0] : ctx.pipefd[1]);
 	ret = popen_noshell_store(result, pid);
