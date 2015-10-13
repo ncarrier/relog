@@ -9,7 +9,7 @@ CFLAGS += -g3 -O0 \
 relog:relog.c
 	gcc $^ -o $@ $(CFLAGS)
 
-librelog.so:librelog.c
+librelog.so:librelog.c popen_noshell.c
 	gcc $^ -o $@ -fPIC -shared $(CFLAGS)
 
 clean:

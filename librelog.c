@@ -16,6 +16,7 @@
 #include <stdbool.h>
 
 #include "relog.h"
+#include "popen_noshell.h"
 
 struct relog_process {
 	const char *cmd;
@@ -24,7 +25,6 @@ struct relog_process {
 	int old_fd_backup;
 };
 
-// TODO replace popen by fork exec to gain one process
 // TODO use only one global
 
 static struct relog_process out_process = {
@@ -75,7 +75,7 @@ static void relog_process_clean(struct relog_process *process)
 
 	/* close the dup'ed fd of the process, for pclose will terminate it */
 	close(process->old_fd_value);
-	pclose(process->pipe);
+	pclose_noshell(process->pipe);
 
 	if (process->old_fd_backup == -1)
 		return;
@@ -93,9 +93,9 @@ static int relog_process_init(struct relog_process *process)
 				strerror(EINVAL));
 		return -1;
 	}
-	process->pipe = popen(process->cmd, "w");
+	process->pipe = popen_noshell(process->cmd, "w");
 	if (process->pipe == NULL) {
-		fprintf(stderr, "%d popen: %m\n", __LINE__);
+		fprintf(stderr, "%d popen_noshell: %m\n", __LINE__);
 		return -1;
 	}
 	/* backup the standard file descriptor */
