@@ -9,22 +9,27 @@ RELOG_FORCE_DEFAULT_OUTPUT_TO ?= /dev/stdout
 RELOG_FORCE_DEFAULT_ERROR_TO ?= /dev/stderr
 
 ################################################################################
-# firmwared
+# librelog
 ################################################################################
 
 include $(CLEAR_VARS)
+
 LOCAL_MODULE := librelog
 LOCAL_DESCRIPTION := A small wrapper library for redirecting standard output \
 	streams to another log facility, e.g. ulog
 LOCAL_CATEGORY_PATH := libs
-LOCAL_SRC_FILES := relog.c
+LOCAL_SRC_FILES := \
+	librelog.c \
+	popen_noshell.c
 
 LOCAL_CFLAGS := \
-	-DRELOG_LIBRELOG_PATH=\"$(RELOG_LIBRELOG_PATH)\" \
-	-DRELOG_FORCE_DEFAULT_OUTPUT_TO=\"$(RELOG_FORCE_DEFAULT_ERROR_TO)\" \
-	-DRELOG_FORCE_DEFAULT_ERROR_TO=\"$(RELOG_FORCE_DEFAULT_ERROR_TO)\"
+	-DRELOG_LIBRELOG_PATH=\"$(RELOG_LIBRELOG_PATH)\"
 
 include $(BUILD_LIBRARY)
+
+################################################################################
+# relog
+################################################################################
 
 include $(CLEAR_VARS)
 
