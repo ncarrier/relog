@@ -5,8 +5,6 @@ ifdef TARGET_DEPLOY_ROOT
 else
 	RELOG_LIBRELOG_PATH := $(TARGET_OUT_FINAL)/usr/lib/librelog.so
 endif
-RELOG_FORCE_DEFAULT_OUTPUT_TO ?= /dev/stdout
-RELOG_FORCE_DEFAULT_ERROR_TO ?= /dev/stderr
 
 ################################################################################
 # librelog
@@ -40,6 +38,9 @@ LOCAL_DESCRIPTION := A small executable wrapper for redirecting standard \
 LOCAL_SRC_FILES := relog.c
 LOCAL_DEPENDS_HEADERS := libulog
 LOCAL_REQUIRED_MODULES := librelog
+
+RELOG_FORCE_DEFAULT_OUTPUT_TO ?= /dev/stdout
+RELOG_FORCE_DEFAULT_ERROR_TO ?= /dev/stderr
 
 LOCAL_CFLAGS := \
 	-DRELOG_LIBRELOG_PATH=\"$(RELOG_LIBRELOG_PATH)\" \
